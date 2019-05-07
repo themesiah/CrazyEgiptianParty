@@ -36,5 +36,8 @@ MonoBehaviour:
   - ProcessPlayerInSquare
   - PlayerWonPoints
   - Winner
+  - PaintSqaures
+  - GotSneakers
+  - JumpTriggerRPC
   DisableAutoOpenWizard: 1
   ShowSettings: 0

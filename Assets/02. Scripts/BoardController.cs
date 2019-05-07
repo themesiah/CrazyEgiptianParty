@@ -17,7 +17,11 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
     [SerializeField]
     private float maxTimeToSpawnPaintItem = 5f;
     [SerializeField]
-    private GameObject paintItemPrefab;
+    private float minTimeToSpawnItem = 2f;
+    [SerializeField]
+    private float maxTimeToSpawnItem = 5f;
+    [SerializeField]
+    private GameObject[] itemPrefab;
     [SerializeField]
     private int[] playerStart;
     [SerializeField]
@@ -35,6 +39,13 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
     #endregion
 
     #region PrivateVariables
+    private enum ObjectTypes
+    {
+        PaintObject = 0,
+        PaintArea,
+        Sneakers,
+        MAX
+    }
     [SerializeField]
     private PlayerController[] players;
     [SerializeField]
@@ -42,6 +53,7 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
     private Material[] squaresMaterials;
     private int[] squaresPlayer;
     private GameObject[] squaresObjects;
+    private int[] squaresObjectTypes;
     private float currentTimer;
     private bool isPlaying = false;
     #endregion
@@ -178,9 +190,22 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
                     Vector3 newPos = GetPosition(ps);
                     newPos.y = playerY;
                     players[i].transform.position = newPos;
-                    players[i].OnStart();
                 }
                 uiController.SetPlayerScore(i, 0);
+            }
+        }
+    }
+
+    private void InitPlayersMovement()
+    {
+        for (int i = 0; i < players.Length; ++i)
+        {
+            if (players[i] != null)
+            {
+                if (players[i].photonView.IsMine)
+                {
+                    players[i].OnStart();
+                }
             }
         }
     }
@@ -190,6 +215,7 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
         squaresMaterials = new Material[squaresArray.Length];
         squaresPlayer = new int[squaresArray.Length];
         squaresObjects = new GameObject[squaresArray.Length];
+        squaresObjectTypes = new int[squaresArray.Length];
         for (int i = 0; i < squaresArray.Length; ++i)
         {
             squaresMaterials[i] = squaresArray[i].GetComponent<MeshRenderer>().material;
@@ -271,16 +297,22 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
     public void StartGame()
     {
         InitPlayers();
-        if (!PhotonNetwork.IsMasterClient)
+        uiController.CountTo0(() =>
         {
-            GameObject.Find("WaitingText").SetActive(false);
-        }
-        else
-        {
-            StartCoroutine(PaintObjectInstantiationCoroutine());
-        }
-        isPlaying = true;
-        uiController.ActivateTimer();
+            InitPlayersMovement();
+            if (!PhotonNetwork.IsMasterClient)
+            {
+                GameObject.Find("WaitingText").SetActive(false);
+            }
+            else
+            {
+                StartCoroutine(PaintObjectInstantiationCoroutine());
+                StartCoroutine(PowerupsInstantiationCoroutine());
+            }
+            isPlaying = true;
+            uiController.ActivateTimer();
+            AudioManager.instance.PlayMusic();
+        });
     }
 
     [PunRPC]
@@ -292,6 +324,26 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
     }
 
     [PunRPC]
+    public void PaintSqaures(int player, byte[] ix)
+    {
+        int[] indexes = FormatterSerializer.Deserialize<int[]>(ix);
+        foreach(int index in indexes)
+        {
+            squaresMaterials[index].SetColor("_EmissionColor", playerColor[player]);
+            squaresPlayer[index] = player;
+        }
+    }
+
+    [PunRPC]
+    public void GotSneakers(int player)
+    {
+        if (PlayerController.LocalPlayer.playerNumber == player)
+        {
+            PlayerController.LocalPlayer.GotSneakers();
+        }
+    }
+
+    [PunRPC]
     public void ProcessPlayerInSquare(int index, int player)
     {
         if (PhotonNetwork.IsMasterClient)
@@ -299,18 +351,43 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
             if (squaresObjects[index] != null)
             {
                 PhotonNetwork.Destroy(squaresObjects[index].GetComponent<PhotonView>());
-                int points = 0;
-                for (int i = 0; i < squaresPlayer.Length; ++i)
+                switch(squaresObjectTypes[index])
                 {
-                    if (squaresPlayer[i] == player)
-                    {
-                        squaresPlayer[i] = -1;
-                        //squaresMaterials[i].color = Color.white;
-                        squaresMaterials[i].SetColor("_EmissionColor", Color.black);
-                        points++;
-                    }
+                    case (int)ObjectTypes.PaintObject:
+                        int points = 0;
+                        for (int i = 0; i < squaresPlayer.Length; ++i)
+                        {
+                            if (squaresPlayer[i] == player)
+                            {
+                                squaresPlayer[i] = -1;
+                                //squaresMaterials[i].color = Color.white;
+                                squaresMaterials[i].SetColor("_EmissionColor", Color.black);
+                                points++;
+                            }
+                        }
+                        photonView.RPC("PlayerWonPoints", RpcTarget.All, player, points);
+                        break;
+                    case (int)ObjectTypes.PaintArea:
+                        {
+                            List<int> paintArea = new List<int>();
+                            Vector2Int coord = GetCoordinates(index);
+                            for (int i = 0; i < 10; ++i)
+                            {
+                                Vector2Int targetCoord = coord;
+                                targetCoord.x = i;
+                                paintArea.Add(GetIndex(targetCoord.x, targetCoord.y));
+
+                                targetCoord = coord;
+                                targetCoord.y = i;
+                                paintArea.Add(GetIndex(targetCoord.x, targetCoord.y));
+                            }
+                            photonView.RPC("PaintSqaures", RpcTarget.All, player, FormatterSerializer.Serialize(paintArea.ToArray()));
+                        }
+                        break;
+                    case (int)ObjectTypes.Sneakers:
+                        photonView.RPC("GotSneakers", RpcTarget.All, player);
+                        break;
                 }
-                photonView.RPC("PlayerWonPoints", RpcTarget.All, player, points);
             }
         }
     }
@@ -332,13 +409,23 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
             yield return new WaitForSeconds(timeToSpawnPaintItem);
             int rand = GetItemRandomSpawnPoint();
             Vector3 pos = GetItemPosition(rand);
-            squaresObjects[rand] = PhotonNetwork.Instantiate(paintItemPrefab.name, pos, Quaternion.identity, 0);
+            squaresObjects[rand] = PhotonNetwork.Instantiate("items/"+itemPrefab[0].name, pos, Quaternion.identity, 0);
+            squaresObjectTypes[rand] = 0;
         }
     }
 
     IEnumerator PowerupsInstantiationCoroutine()
     {
-        yield return null;
+        while (true)
+        {
+            float timeToSpawnItem = UnityEngine.Random.Range(minTimeToSpawnItem, maxTimeToSpawnItem);
+            yield return new WaitForSeconds(timeToSpawnItem);
+            int rand = GetItemRandomSpawnPoint();
+            int type = UnityEngine.Random.Range(0, (int)ObjectTypes.MAX);
+            Vector3 pos = GetItemPosition(rand);
+            squaresObjects[rand] = PhotonNetwork.Instantiate("items/" + itemPrefab[type].name, pos, Quaternion.identity, 0);
+            squaresObjectTypes[rand] = type;
+        }
     }
     #endregion
 

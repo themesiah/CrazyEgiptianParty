@@ -18,7 +18,7 @@ public class PhotonController : MonoBehaviourPunCallbacks//, IPunObservable
     [SerializeField]
     private GameObject waitingText;
     [SerializeField]
-    private GameObject playerPrefab;
+    private GameObject[] playerPrefab;
     
 
 
@@ -108,9 +108,10 @@ public class PhotonController : MonoBehaviourPunCallbacks//, IPunObservable
         {
             waitingText.SetActive(true);
         }
-        GameObject player = PhotonNetwork.Instantiate(playerPrefab.name, new Vector3(1000f, 0f, 0f), Quaternion.identity, 0);
+        int playerNumber = PhotonNetwork.CurrentRoom.PlayerCount - 1;
+        GameObject player = PhotonNetwork.Instantiate(playerPrefab[playerNumber].name, new Vector3(1000f, 0f, 0f), Quaternion.identity, 0);
         PlayerController.LocalPlayer = player.GetComponent<PlayerController>();
-        PlayerController.LocalPlayer.playerNumber = PhotonNetwork.CurrentRoom.PlayerCount - 1;
+        PlayerController.LocalPlayer.playerNumber = playerNumber;
         PlayerController.LocalPlayer.ChangeName(PhotonNetwork.NickName);
     }
 

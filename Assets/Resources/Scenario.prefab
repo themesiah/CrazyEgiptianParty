@@ -2503,7 +2503,7 @@ Transform:
   m_PrefabInternal: {fileID: 100100000}
   m_GameObject: {fileID: 1652015169970742}
   m_LocalRotation: {x: -0.7071068, y: 0, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: -4.643832, y: 0, z: 4.7572837}
+  m_LocalPosition: {x: -4.643832, y: -0.73, z: 4.7572837}
   m_LocalScale: {x: 0.5967394, y: 0.5967394, z: 0.5967394}
   m_Children: []
   m_Father: {fileID: 4258639935479196}
@@ -7744,8 +7744,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   minTimeToSpawnPaintItem: 2
   maxTimeToSpawnPaintItem: 5
-  paintItemPrefab: {fileID: 1358231688439326, guid: f0d9c9681b982e74ea09c6274aa6264a,
-    type: 2}
+  minTimeToSpawnItem: 2
+  maxTimeToSpawnItem: 5
+  itemPrefab:
+  - {fileID: 1358231688439326, guid: f0d9c9681b982e74ea09c6274aa6264a, type: 2}
+  - {fileID: 1501090224614310, guid: a3c8c9db03b30be4b9f4169961dd4021, type: 2}
+  - {fileID: 1672856148335976, guid: 6ad8381df02e01844b2b0a26f30235cc, type: 2}
   playerStart: 0b000000580000001200000051000000
   playerColor:
   - {r: 1, g: 0, b: 0, a: 1}

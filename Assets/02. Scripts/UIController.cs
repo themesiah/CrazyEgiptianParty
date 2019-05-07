@@ -17,6 +17,8 @@ public class UIController : MonoBehaviour {
     private TextMeshProUGUI statusText;
     [SerializeField]
     private TMP_InputField nameText;
+    [SerializeField]
+    private TextMeshProUGUI countTo0;
 
     // Ingame UI
     [SerializeField]
@@ -41,6 +43,26 @@ public class UIController : MonoBehaviour {
             connectionButtons[1].interactable = false;
             statusText.SetText("Estado: Conectado al servidor\nEsperando nombre");
         }
+    }
+
+    public void CountTo0(UnityEngine.Events.UnityAction callback)
+    {
+        StartCoroutine(CountTo0Coroutine(callback));
+    }
+
+    IEnumerator CountTo0Coroutine(UnityEngine.Events.UnityAction callback)
+    {
+        countTo0.SetText("3");
+        countTo0.gameObject.SetActive(true);
+        yield return new WaitForSeconds(1f);
+        countTo0.SetText("2");
+        yield return new WaitForSeconds(1f);
+        countTo0.SetText("1");
+        yield return new WaitForSeconds(1f);
+        countTo0.SetText("FIESTA");
+        yield return new WaitForSeconds(1f);
+        countTo0.gameObject.SetActive(false);
+        callback();
     }
     
     public void SetGameConnected(bool ra)
@@ -91,7 +113,7 @@ public class UIController : MonoBehaviour {
     public void SetWinner(string winner)
     {
         winnerObject.gameObject.SetActive(true);
-        winnerObject.text = string.Format("~The mummy of the party is {0}~", winner);
+        winnerObject.text = string.Format("~La momia de la fiesta es {0}~", winner);
         timerObject.gameObject.SetActive(false);
     }
 }

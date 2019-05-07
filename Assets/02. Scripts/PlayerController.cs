@@ -9,6 +9,8 @@ public class PlayerController : MonoBehaviourPunCallbacks, IPunObservable {
     public static PlayerController LocalPlayer;
     private BoardController board;
     private BillboardObject bbo;
+    private Animator anim;
+    Coroutine sneakersEndCoroutine;
     public int playerNumber = -1;
     public int points = 0;
 
@@ -21,6 +23,17 @@ public class PlayerController : MonoBehaviourPunCallbacks, IPunObservable {
     [SerializeField]
     [Range(0.1f,1f)]
     private float moveTime = 0.5f;
+    [SerializeField]
+    private float animSpeed = 6f;
+
+    [SerializeField]
+    [Range(1f, 2f)]
+    private float sneakersMultiplier = 1.5f;
+    [SerializeField]
+    private float sneakersTime = 6f;
+    
+
+    private float currentMultiplier = 1f;
 
     public enum Direction
     {
@@ -36,6 +49,8 @@ public class PlayerController : MonoBehaviourPunCallbacks, IPunObservable {
     // Use this for initialization
     void Awake () {
         direction = Direction.None;
+        anim = GetComponentInChildren<Animator>();
+        anim.speed = animSpeed;
         bbo = GetComponentInChildren<BillboardObject>();
     }
 	
@@ -144,10 +159,23 @@ public class PlayerController : MonoBehaviourPunCallbacks, IPunObservable {
             }
             Vector3 jumpPosition = transform.position + (targetPosition - transform.position) / 2f;
             jumpPosition.y += 0.5f;
-            gameObject.Tween("MovePlayer", transform.position, jumpPosition, moveTime / 2f, TweenScaleFunctions.Linear, updatePlayerPos).
-                ContinueWith(new Vector3Tween().Setup(jumpPosition, targetPosition, moveTime / 2f, TweenScaleFunctions.Linear, updatePlayerPos, playerMovementFinished));
-            yield return new WaitForSeconds(tickTime);
+            JumpTrigger();
+            gameObject.Tween("MovePlayer", transform.position, jumpPosition, moveTime / (2f*currentMultiplier), TweenScaleFunctions.Linear, updatePlayerPos).
+                ContinueWith(new Vector3Tween().Setup(jumpPosition, targetPosition, moveTime / (2f*currentMultiplier), TweenScaleFunctions.Linear, updatePlayerPos, playerMovementFinished));
+            yield return new WaitForSeconds(tickTime / currentMultiplier);
         }
+    }
+
+    public void JumpTrigger()
+    {
+        anim.SetTrigger("Jump");
+        photonView.RPC("JumpTriggerRPC", RpcTarget.Others);
+    }
+
+    [PunRPC]
+    public void JumpTriggerRPC()
+    {
+        anim.SetTrigger("Jump");
     }
 
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
@@ -167,4 +195,21 @@ public class PlayerController : MonoBehaviourPunCallbacks, IPunObservable {
         }
     }
 
+    public void GotSneakers()
+    {
+        currentMultiplier = sneakersMultiplier;
+        anim.speed = animSpeed * currentMultiplier;
+        if (sneakersEndCoroutine != null)
+        {
+            StopCoroutine(sneakersEndCoroutine);
+        }
+        sneakersEndCoroutine = StartCoroutine(SneakersEnd());
+    }
+
+    IEnumerator SneakersEnd()
+    {
+        yield return new WaitForSeconds(sneakersTime);
+        currentMultiplier = 1f;
+        anim.speed = animSpeed * currentMultiplier;
+    }
 }
