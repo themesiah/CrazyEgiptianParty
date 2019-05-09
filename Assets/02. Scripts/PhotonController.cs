@@ -103,7 +103,9 @@ public class PhotonController : MonoBehaviourPunCallbacks//, IPunObservable
         if (PhotonNetwork.CurrentRoom.PlayerCount == 1)
         {
             startButton.SetActive(true);
-            PhotonNetwork.Instantiate(boardPrefab.name, new Vector3(0f, 0f, 0f), boardPrefab.transform.rotation, 0);
+            GameObject boardObject = PhotonNetwork.Instantiate(boardPrefab.name, new Vector3(0f, 0f, 0f), boardPrefab.transform.rotation, 0);
+            BoardController bc = boardObject.GetComponent<BoardController>();
+            bc.SpawnDynamicNPCs();
         } else
         {
             waitingText.SetActive(true);

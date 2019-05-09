@@ -316,7 +316,7 @@ Transform:
   m_PrefabInternal: {fileID: 100100000}
   m_GameObject: {fileID: 1450874593106032}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1000, y: 1.33, z: 0}
+  m_LocalPosition: {x: 4.86, y: 1.263, z: -5.937}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 224033275808913190}
@@ -346,7 +346,7 @@ Transform:
   m_GameObject: {fileID: 1839601121585402}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: -0.593, z: 0.026}
-  m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 4815065732039004}
   - {fileID: 4198503745951668}
@@ -657,7 +657,7 @@ MonoBehaviour:
   - {fileID: 114377567183067522}
   - {fileID: 114344871834985942}
   viewIdField: 0
-  InstantiationId: 1
+  InstantiationId: 2
   isRuntimeInstantiated: 0
 --- !u!114 &114344871834985942
 MonoBehaviour:
@@ -678,6 +678,8 @@ MonoBehaviour:
   animSpeed: 6
   sneakersMultiplier: 1.6
   sneakersTime: 5
+  chanclaMultiplier: 0.6
+  chanclaTime: 4
 --- !u!114 &114377567183067522
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -953,7 +955,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0.47}
+  m_AnchoredPosition: {x: 0, y: 2}
   m_SizeDelta: {x: 1366, y: 768}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!224 &224829639828571620

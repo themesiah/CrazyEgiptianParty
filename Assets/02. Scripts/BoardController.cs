@@ -31,11 +31,27 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
     [SerializeField]
     private float itemY = 2.0f;
     [SerializeField]
+    private float itemYappear = 20.0f;
+    [SerializeField]
+    private float itemDropTime = 2.0f;
+    [SerializeField]
     private int gameTime = 90;
     [SerializeField]
     float cameraZoomDuration = 5f;
     [SerializeField]
     float cameraRotationDuration = 2f;
+    [SerializeField]
+    Transform sobekPosition;
+    [SerializeField]
+    GameObject sobekPrefab;
+    [SerializeField]
+    Transform mummyPosition;
+    [SerializeField]
+    GameObject mummyPrefab;
+    [SerializeField]
+    GameObject sarcophagusPrefab;
+    [SerializeField]
+    SarcophagusController sarcophagusController;
     #endregion
 
     #region PrivateVariables
@@ -44,8 +60,12 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
         PaintObject = 0,
         PaintArea,
         Sneakers,
+        PaintObjectx2,
+        Swap,
+        Chancla,
         MAX
     }
+    private int quantityOfPlayers;
     [SerializeField]
     private PlayerController[] players;
     [SerializeField]
@@ -56,6 +76,9 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
     private int[] squaresObjectTypes;
     private float currentTimer;
     private bool isPlaying = false;
+    private GameObject sobek;
+    private GameObject mummy;
+    private GameObject sarcophagus;
     #endregion
 
     #region Monocallbacks
@@ -107,7 +130,7 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
     public Vector3 GetItemPosition(int index)
     {
         Vector3 pos = squaresArray[index].transform.position;
-        pos.y = itemY;
+        pos.y = itemYappear;
         return pos;
     }
 
@@ -135,6 +158,13 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
     public bool IsOfflimits(int x, int y)
     {
         return (x < 0 || x > 9 || y < 0 || y > 9);
+    }
+
+    public void SpawnDynamicNPCs()
+    {
+        sobek = PhotonNetwork.Instantiate("dynamic/" + sobekPrefab.name, sobekPosition.position, sobekPosition.rotation, 0);
+        mummy = PhotonNetwork.Instantiate("dynamic/" + mummyPrefab.name, mummyPosition.position, mummyPosition.rotation, 0);
+        //sarcophagus = PhotonNetwork.Instantiate("dynamic/" + sarcophagusPrefab.name, mummyPosition.position, mummyPosition.rotation, 0);
     }
     #endregion
 
@@ -168,9 +198,15 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
         players[index] = player;
     }
 
+    private int GetNextPlayer(int player)
+    {
+        return (player + 1) % quantityOfPlayers;
+    }
+
     private void InitPlayers()
     {
         PlayerController[] playerObjects = FindObjectsOfType<PlayerController>();
+        quantityOfPlayers = playerObjects.Length;
         for (int i = 0; i < playerObjects.Length; ++i)
         {
             AddPlayer(playerObjects[i], playerObjects[i].playerNumber);
@@ -297,21 +333,24 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
     public void StartGame()
     {
         InitPlayers();
-        uiController.CountTo0(() =>
-        {
-            InitPlayersMovement();
+        MummyController.instance.PlayAnimation();
+        sarcophagusController.Open(() => {
             if (!PhotonNetwork.IsMasterClient)
             {
-                GameObject.Find("WaitingText").SetActive(false);
+                uiController.DeactivateWaitingText();
             }
-            else
+            uiController.CountTo0(() =>
             {
-                StartCoroutine(PaintObjectInstantiationCoroutine());
-                StartCoroutine(PowerupsInstantiationCoroutine());
-            }
-            isPlaying = true;
-            uiController.ActivateTimer();
-            AudioManager.instance.PlayMusic();
+                InitPlayersMovement();
+                if (PhotonNetwork.IsMasterClient)
+                {
+                    StartCoroutine(PaintObjectInstantiationCoroutine());
+                    StartCoroutine(PowerupsInstantiationCoroutine());
+                }
+                isPlaying = true;
+                uiController.ActivateTimer();
+                AudioManager.instance.PlayMusic();
+            });
         });
     }
 
@@ -344,28 +383,50 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
     }
 
     [PunRPC]
+    public void GotChancla(int player)
+    {
+        if (PlayerController.LocalPlayer.playerNumber == player)
+        {
+            PlayerController.LocalPlayer.GotChancla();
+        }
+    }
+
+    [PunRPC]
     public void ProcessPlayerInSquare(int index, int player)
     {
         if (PhotonNetwork.IsMasterClient)
         {
             if (squaresObjects[index] != null)
             {
-                PhotonNetwork.Destroy(squaresObjects[index].GetComponent<PhotonView>());
                 switch(squaresObjectTypes[index])
                 {
                     case (int)ObjectTypes.PaintObject:
-                        int points = 0;
-                        for (int i = 0; i < squaresPlayer.Length; ++i)
                         {
-                            if (squaresPlayer[i] == player)
+                            int points = 0;
+                            for (int i = 0; i < squaresPlayer.Length; ++i)
                             {
-                                squaresPlayer[i] = -1;
-                                //squaresMaterials[i].color = Color.white;
-                                squaresMaterials[i].SetColor("_EmissionColor", Color.black);
-                                points++;
+                                if (squaresPlayer[i] == player)
+                                {
+                                    points++;
+                                }
                             }
+                            photonView.RPC("PlayerWonPoints", RpcTarget.All, player, points);
+                            photonView.RPC("PlayerResetSquares", RpcTarget.All, player);
                         }
-                        photonView.RPC("PlayerWonPoints", RpcTarget.All, player, points);
+                        break;
+                    case (int)ObjectTypes.PaintObjectx2:
+                        {
+                            int points = 0;
+                            for (int i = 0; i < squaresPlayer.Length; ++i)
+                            {
+                                if (squaresPlayer[i] == player)
+                                {
+                                    points += 2;
+                                }
+                            }
+                            photonView.RPC("PlayerWonPoints", RpcTarget.All, player, points);
+                            photonView.RPC("PlayerResetSquares", RpcTarget.All, player);
+                        }
                         break;
                     case (int)ObjectTypes.PaintArea:
                         {
@@ -387,7 +448,45 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
                     case (int)ObjectTypes.Sneakers:
                         photonView.RPC("GotSneakers", RpcTarget.All, player);
                         break;
+                    case (int)ObjectTypes.Chancla:
+                        photonView.RPC("GotChancla", RpcTarget.All, player);
+                        break;
+                    case (int)ObjectTypes.Swap:
+                        photonView.RPC("Swap", RpcTarget.All);
+                        break;
                 }
+                if (squaresObjectTypes[index] != -1) // If it doesn't have type it means it didn't hit the floor yet!
+                {
+                    PhotonNetwork.Destroy(squaresObjects[index].GetComponent<PhotonView>());
+                }
+            }
+        }
+        squaresObjectTypes[index] = -1;
+        squaresObjects[index] = null;
+    }
+
+    [PunRPC]
+    public void PlayerResetSquares(int player)
+    {
+        for (int i = 0; i < squaresPlayer.Length; ++i)
+        {
+            if (squaresPlayer[i] == player)
+            {
+                squaresPlayer[i] = -1;
+                squaresMaterials[i].SetColor("_EmissionColor", Color.black);
+            }
+        }
+    }
+
+    [PunRPC]
+    public void Swap()
+    {
+        for (int i = 0; i < squaresPlayer.Length; i++)
+        {
+            if (squaresPlayer[i] != -1)
+            {
+                squaresPlayer[i] = GetNextPlayer(squaresPlayer[i]);
+                squaresMaterials[i].SetColor("_EmissionColor", playerColor[squaresPlayer[i]]);
             }
         }
     }
@@ -410,7 +509,8 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
             int rand = GetItemRandomSpawnPoint();
             Vector3 pos = GetItemPosition(rand);
             squaresObjects[rand] = PhotonNetwork.Instantiate("items/"+itemPrefab[0].name, pos, Quaternion.identity, 0);
-            squaresObjectTypes[rand] = 0;
+            pos.y = itemY;
+            StartCoroutine(DropTween(squaresObjects[rand], pos, rand, 0));
         }
     }
 
@@ -421,11 +521,26 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
             float timeToSpawnItem = UnityEngine.Random.Range(minTimeToSpawnItem, maxTimeToSpawnItem);
             yield return new WaitForSeconds(timeToSpawnItem);
             int rand = GetItemRandomSpawnPoint();
-            int type = UnityEngine.Random.Range(0, (int)ObjectTypes.MAX);
+            int type = UnityEngine.Random.Range(1, (int)ObjectTypes.MAX);
             Vector3 pos = GetItemPosition(rand);
             squaresObjects[rand] = PhotonNetwork.Instantiate("items/" + itemPrefab[type].name, pos, Quaternion.identity, 0);
-            squaresObjectTypes[rand] = type;
+            pos.y = itemY;
+            StartCoroutine(DropTween(squaresObjects[rand], pos, rand, type));
         }
+    }
+
+    IEnumerator DropTween(GameObject go, Vector3 targetPosition, int index, int type)
+    {
+        float speed = Vector3.Distance(go.transform.position, targetPosition) / itemDropTime;
+
+        while (!go.transform.position.AlmostEquals(targetPosition, 0.01f))
+        {
+            go.transform.position = Vector3.MoveTowards(go.transform.position, targetPosition, speed * Time.deltaTime);
+            yield return null;
+        }
+
+        squaresObjectTypes[index] = type;
+        yield return null;
     }
     #endregion
 

@@ -11,6 +11,7 @@ public class PlayerController : MonoBehaviourPunCallbacks, IPunObservable {
     private BillboardObject bbo;
     private Animator anim;
     Coroutine sneakersEndCoroutine;
+    Coroutine chanclaEndCoroutine;
     public int playerNumber = -1;
     public int points = 0;
 
@@ -31,6 +32,12 @@ public class PlayerController : MonoBehaviourPunCallbacks, IPunObservable {
     private float sneakersMultiplier = 1.5f;
     [SerializeField]
     private float sneakersTime = 6f;
+
+    [SerializeField]
+    [Range(0.1f, 1f)]
+    private float chanclaMultiplier = 0.6f;
+    [SerializeField]
+    private float chanclaTime = 4f;
     
 
     private float currentMultiplier = 1f;
@@ -209,6 +216,24 @@ public class PlayerController : MonoBehaviourPunCallbacks, IPunObservable {
     IEnumerator SneakersEnd()
     {
         yield return new WaitForSeconds(sneakersTime);
+        currentMultiplier = 1f;
+        anim.speed = animSpeed * currentMultiplier;
+    }
+
+    public void GotChancla()
+    {
+        currentMultiplier = chanclaMultiplier;
+        anim.speed = animSpeed * currentMultiplier;
+        if (chanclaEndCoroutine != null)
+        {
+            StopCoroutine(chanclaEndCoroutine);
+        }
+        chanclaEndCoroutine = StartCoroutine(ChanclaEnd());
+    }
+
+    IEnumerator ChanclaEnd()
+    {
+        yield return new WaitForSeconds(chanclaTime);
         currentMultiplier = 1f;
         anim.speed = animSpeed * currentMultiplier;
     }

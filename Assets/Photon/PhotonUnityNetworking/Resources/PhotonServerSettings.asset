@@ -39,5 +39,8 @@ MonoBehaviour:
   - PaintSqaures
   - GotSneakers
   - JumpTriggerRPC
+  - PlayerResetSquares
+  - GotChancla
+  - Swap
   DisableAutoOpenWizard: 1
   ShowSettings: 0

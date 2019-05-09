@@ -16,6 +16,8 @@ public class UIController : MonoBehaviour {
     [SerializeField]
     private TextMeshProUGUI statusText;
     [SerializeField]
+    private TextMeshProUGUI waitingText;
+    [SerializeField]
     private TMP_InputField nameText;
     [SerializeField]
     private TextMeshProUGUI countTo0;
@@ -75,6 +77,11 @@ public class UIController : MonoBehaviour {
     public string GetPlayerName()
     {
         return nameText.text;
+    }
+
+    public void DeactivateWaitingText()
+    {
+        waitingText.gameObject.SetActive(false);
     }
 
     public void DeactivatePregameUI()
