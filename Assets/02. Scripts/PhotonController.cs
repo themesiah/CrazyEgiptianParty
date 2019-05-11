@@ -19,6 +19,8 @@ public class PhotonController : MonoBehaviourPunCallbacks//, IPunObservable
     private GameObject waitingText;
     [SerializeField]
     private GameObject[] playerPrefab;
+
+    private bool gameStarted = false;
     
 
 
@@ -62,7 +64,16 @@ public class PhotonController : MonoBehaviourPunCallbacks//, IPunObservable
         // #Critical: The first we try to do is to join a potential existing room. If there is, good, else, we'll be called back with OnJoinRandomFailed()
         //PhotonNetwork.JoinRandomRoom();
 
-        uiController.SetGameConnected(PhotonNetwork.CountOfRooms > 0);
+        StartCoroutine(CheckRooms());
+    }
+
+    IEnumerator CheckRooms()
+    {
+        while (gameStarted == false)
+        {
+            uiController.SetGameConnected(PhotonNetwork.CountOfRooms > 0);
+            yield return new WaitForSeconds(3f);
+        }
     }
 
     public void CreateOrJoin()
@@ -115,10 +126,21 @@ public class PhotonController : MonoBehaviourPunCallbacks//, IPunObservable
         PlayerController.LocalPlayer = player.GetComponent<PlayerController>();
         PlayerController.LocalPlayer.playerNumber = playerNumber;
         PlayerController.LocalPlayer.ChangeName(PhotonNetwork.NickName);
+        gameStarted = true;
     }
 
     public void StartGame()
     {
         BoardController.BoardInstance.SendStartGame();
+    }
+
+    public void Restart()
+    {
+        if (PhotonNetwork.IsMasterClient)
+        {
+            PhotonNetwork.DestroyAll();
+        }
+        PhotonNetwork.LeaveRoom();
+        UnityEngine.SceneManagement.SceneManager.LoadScene(0);
     }
 }

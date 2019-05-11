@@ -506,6 +506,7 @@ GameObject:
   - component: {fileID: 95039024977006982}
   - component: {fileID: 114396613768725606}
   - component: {fileID: 114779727711364736}
+  - component: {fileID: 114325288325784988}
   m_Layer: 0
   m_Name: Sobek Bailarin
   m_TagString: Untagged
@@ -1193,6 +1194,19 @@ Animator:
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorControllerStateOnDisable: 0
+--- !u!114 &114325288325784988
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 1870047582515976}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 228a82e8442118d47a9f7b76308e469b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  anim: {fileID: 95039024977006982}
+  duration: 5
 --- !u!114 &114396613768725606
 MonoBehaviour:
   m_ObjectHideFlags: 1

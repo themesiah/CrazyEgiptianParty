@@ -24,13 +24,15 @@ public class UIController : MonoBehaviour {
 
     // Ingame UI
     [SerializeField]
-    private TextMeshProUGUI[] scoresObjects;
+    private Text[] scoresObjects;
     [SerializeField]
-    private Image[] imagesObjects;
+    private GameObject[] portraitObjects;
     [SerializeField]
-    private TextMeshProUGUI timerObject;
+    private Text timerObject;
     [SerializeField]
-    private TextMeshProUGUI winnerObject;
+    private Text winnerObject;
+    [SerializeField]
+    private GameObject restartButton;
 
     public void ManageName()
     {
@@ -72,6 +74,7 @@ public class UIController : MonoBehaviour {
         roomAvailable = ra;
         gameConnected = true;
         statusText.SetText("Estado: Conectado al servidor\nEsperando nombre");
+        ManageName();
     }
 
     public string GetPlayerName()
@@ -98,8 +101,7 @@ public class UIController : MonoBehaviour {
     {
         for (int i = 0; i < max; ++i)
         {
-            scoresObjects[i].gameObject.SetActive(true);
-            imagesObjects[i].gameObject.SetActive(true);
+            portraitObjects[i].SetActive(true);
         }
     }
 
@@ -112,9 +114,7 @@ public class UIController : MonoBehaviour {
     {
         int minutes = time / 60;
         int seconds = time % 60;
-
-        string sminutes = minutes.ToString();
-        timerObject.text = string.Format("{0:00}:{1:00}s", minutes, seconds);
+        timerObject.text = string.Format("{0:00}:{1:00}", minutes, seconds);
     }
 
     public void SetWinner(string winner)
@@ -122,5 +122,10 @@ public class UIController : MonoBehaviour {
         winnerObject.gameObject.SetActive(true);
         winnerObject.text = string.Format("~La momia de la fiesta es {0}~", winner);
         timerObject.gameObject.SetActive(false);
+    }
+
+    public void End()
+    {
+        restartButton.SetActive(true);
     }
 }

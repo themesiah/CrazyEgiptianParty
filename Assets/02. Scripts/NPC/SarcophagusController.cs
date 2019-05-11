@@ -11,8 +11,6 @@ public class SarcophagusController : MonoBehaviour {
     private GameObject cover;
     [SerializeField]
     private float targetAngle;
-    [SerializeField]
-    private float openingDuration = 2f;
 
     private UnityAction callback;
 

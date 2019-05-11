@@ -1,9 +1,9 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using System;
 using Photon.Pun;
 using DigitalRuby.Tween;
+using System.Linq;
 
 public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
 {
@@ -37,21 +37,35 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
     [SerializeField]
     private int gameTime = 90;
     [SerializeField]
-    float cameraZoomDuration = 5f;
+    private float cameraZoomDuration = 5f;
     [SerializeField]
-    float cameraRotationDuration = 2f;
+    private float cameraRotationDuration = 2f;
     [SerializeField]
-    Transform sobekPosition;
+    private Transform sobekPosition;
     [SerializeField]
-    GameObject sobekPrefab;
+    private GameObject sobekPrefab;
     [SerializeField]
-    Transform mummyPosition;
+    private Transform mummyPosition;
     [SerializeField]
-    GameObject mummyPrefab;
+    private GameObject mummyPrefab;
     [SerializeField]
-    GameObject sarcophagusPrefab;
+    private GameObject sarcophagusPrefab;
     [SerializeField]
-    SarcophagusController sarcophagusController;
+    private SarcophagusController sarcophagusController;
+    [SerializeField]
+    private Transform sobekTargetPosition;
+    [SerializeField]
+    private float timeForSobekMovement = 30f;
+    [SerializeField]
+    private GameObject sobekBotPrefab;
+    [SerializeField]
+    private Transform sobekBotSpawn;
+    [SerializeField]
+    private Transform sobekBotBeginPosition;
+    [SerializeField]
+    private GameObject pointParticlesPrefab;
+    [SerializeField]
+    private GameObject[] victoryChars;
     #endregion
 
     #region PrivateVariables
@@ -74,11 +88,15 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
     private int[] squaresPlayer;
     private GameObject[] squaresObjects;
     private int[] squaresObjectTypes;
+    private ParticleSystem[] pointParticles;
     private float currentTimer;
     private bool isPlaying = false;
     private GameObject sobek;
     private GameObject mummy;
     private GameObject sarcophagus;
+    private SobekInitController sobekInitController;
+    private SobekController sobekController;
+    private int[] results;
     #endregion
 
     #region Monocallbacks
@@ -152,6 +170,10 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
                 }
             }
         }
+        if (SobekController.instance != null && SobekController.instance.GetCurrentSquare() == index)
+        {
+            return true;
+        }
         return false;
     }
 
@@ -164,31 +186,90 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
     {
         sobek = PhotonNetwork.Instantiate("dynamic/" + sobekPrefab.name, sobekPosition.position, sobekPosition.rotation, 0);
         mummy = PhotonNetwork.Instantiate("dynamic/" + mummyPrefab.name, mummyPosition.position, mummyPosition.rotation, 0);
-        //sarcophagus = PhotonNetwork.Instantiate("dynamic/" + sarcophagusPrefab.name, mummyPosition.position, mummyPosition.rotation, 0);
+        sobekInitController = sobek.GetComponent<SobekInitController>();
     }
     #endregion
 
     #region PrivateApi
-    private void EndGame()
+    private void FadeIn()
     {
-        uiController.SetTime(0);
-        isPlaying = false;
-        // Get winning player
-        int maxPlayer = 0;
-        int maxPoints = 0;
+        CameraFade cf = gameObject.AddComponent<CameraFade>();
+        cf.SetCallback(() => {
+            FadeOut();
+        });
+        cf.StartFade(new Color(0f, 0f, 0f, 1f), 3f);
+    }
+
+    private void FadeOut()
+    {
         foreach (PlayerController pc in players)
         {
             if (pc != null)
             {
-                if (pc.points > maxPoints)
+                if (pc.photonView.IsMine)
                 {
-                    maxPoints = pc.points;
-                    maxPlayer = pc.playerNumber;
+                    PhotonNetwork.Destroy(pc.photonView);
+                }
+            }
+        }
+        if (SobekController.instance != null)
+        {
+            if (SobekController.instance.photonView.IsMine)
+            {
+                PhotonNetwork.Destroy(SobekController.instance.photonView);
+            }
+        }
+        MummyController.instance.GetComponent<Animator>().SetTrigger("stop");
+        if (PhotonNetwork.IsMasterClient == true)
+        {
+            foreach (GameObject go in squaresObjects)
+            {
+                if (go != null)
+                {
+                    PhotonNetwork.Destroy(go);
                 }
             }
         }
 
-        SendWinner(maxPlayer);
+        for (int i = 0; i < quantityOfPlayers; ++i)
+        {
+            victoryChars[i].gameObject.SetActive(true);
+        }
+        if (quantityOfPlayers > 0)
+        {
+            victoryChars[results[0]].GetComponent<Animator>().SetInteger("result", 1);
+        }
+        if (quantityOfPlayers > 1)
+        {
+            victoryChars[results[1]].GetComponent<Animator>().SetInteger("result", 2);
+        }
+        if (quantityOfPlayers > 2)
+        {
+            victoryChars[results[2]].GetComponent<Animator>().SetInteger("result", 3);
+        }
+        if (quantityOfPlayers > 3)
+        {
+            victoryChars[results[3]].GetComponent<Animator>().SetInteger("result", 4);
+        }
+        foreach(GameObject ch in victoryChars)
+        {
+            if (ch.activeSelf)
+            {
+                ch.GetComponent<Animator>().SetTrigger("do");
+            }
+        }
+
+        CameraFade cf = gameObject.AddComponent<CameraFade>();
+        cf.SetCallback(() => {
+            uiController.End();
+        });
+        cf.SetScreenOverlayColor(new Color(0f, 0f, 0f, 1f));
+        cf.StartFade(new Color(0f,0f,0f,0f), 3f);
+    }
+
+    private void EndGame()
+    {
+        SendWinner();
         // Stop spawning items
         StopAllCoroutines();
     }
@@ -252,10 +333,13 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
         squaresPlayer = new int[squaresArray.Length];
         squaresObjects = new GameObject[squaresArray.Length];
         squaresObjectTypes = new int[squaresArray.Length];
+        pointParticles = new ParticleSystem[squaresArray.Length];
         for (int i = 0; i < squaresArray.Length; ++i)
         {
             squaresMaterials[i] = squaresArray[i].GetComponent<MeshRenderer>().material;
             squaresPlayer[i] = -1;
+            GameObject particleObject = Instantiate(pointParticlesPrefab, squaresArray[i].transform.position, pointParticlesPrefab.transform.rotation);
+            pointParticles[i] = particleObject.GetComponent<ParticleSystem>();
         }
     }
 
@@ -290,6 +374,13 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
         }
         return rand;
     }
+
+    private void SpawnSobekBot()
+    {
+        GameObject sobekBot = PhotonNetwork.Instantiate("dynamic/" + sobekBotPrefab.name, sobekBotBeginPosition.position, Quaternion.identity, 0);
+        sobekController = sobekBot.GetComponent<SobekController>();
+        sobekController.Begin(sobekBotBeginPosition.position);
+    }
     #endregion
 
     #region RPCCalls
@@ -299,22 +390,45 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
         photonView.RPC("ProcessPlayerInSquare", RpcTarget.All, index, player);
     }
 
+    public void SendSobekInSquare(int index)
+    {
+        photonView.RPC("ResetSquare", RpcTarget.All, index);
+        photonView.RPC("ProcessSobekInSquare", RpcTarget.All, index);
+    }
+
     public void SendStartGame()
     {
         photonView.RPC("StartGame", RpcTarget.All);
     }
 
-    public void SendWinner(int player)
+    public void SendWinner()
     {
-        photonView.RPC("Winner", RpcTarget.All, player);
+        photonView.RPC("Winner", RpcTarget.All);
     }
     #endregion
 
     #region RPCFunctions
     [PunRPC]
-    public void Winner(int player)
+    public void Winner()
     {
+        uiController.SetTime(0);
+        isPlaying = false;
         // Stop players
+        PlayerController[] pcs = new PlayerController[quantityOfPlayers];
+        for (int i = 0; i < players.Length; ++i)
+        {
+            if (players[i] != null)
+            {
+                pcs[i] = players[i];
+            }
+        }
+        PlayerController[] ordered = pcs.OrderBy(pc => pc.points).Reverse().ToArray();
+        results = new int[ordered.Length];
+        for(int i = 0; i < ordered.Length; ++i)
+        {
+            results[i] = ordered[i].playerNumber;
+        }
+
         foreach (PlayerController pc in players)
         {
             if (pc != null)
@@ -322,11 +436,17 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
                 pc.StopAllCoroutines();
             }
         }
+        if (SobekController.instance != null)
+        {
+            SobekController.instance.StopAllCoroutines();
+        }
 
-        // Set "Player {playername} won" in UI
+        /*// Set "Player {playername} won" in UI
         uiController.SetWinner(players[player].GetName());
         // Camera zoom to player
-        ZoomWinner(player);
+        ZoomWinner(player);*/
+
+        FadeIn();
     }
 
     [PunRPC]
@@ -346,6 +466,7 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
                 {
                     StartCoroutine(PaintObjectInstantiationCoroutine());
                     StartCoroutine(PowerupsInstantiationCoroutine());
+                    StartCoroutine(StartSobekMovement());
                 }
                 isPlaying = true;
                 uiController.ActivateTimer();
@@ -360,6 +481,13 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
         //squaresMaterials[index].color = playerColor[player];
         squaresMaterials[index].SetColor("_EmissionColor", playerColor[player]);
         squaresPlayer[index] = player;
+    }
+
+    [PunRPC]
+    public void ResetSquare(int index)
+    {
+        squaresMaterials[index].SetColor("_EmissionColor", Color.black);
+        squaresPlayer[index] = -1;
     }
 
     [PunRPC]
@@ -389,6 +517,23 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
         {
             PlayerController.LocalPlayer.GotChancla();
         }
+    }
+
+    [PunRPC]
+    public void ProcessSobekInSquare(int index)
+    {
+        if (PhotonNetwork.IsMasterClient)
+        {
+            if (squaresObjects[index] != null)
+            {
+                if (squaresObjectTypes[index] != -1) // If it doesn't have type it means it didn't hit the floor yet!
+                {
+                    PhotonNetwork.Destroy(squaresObjects[index].GetComponent<PhotonView>());
+                }
+            }
+        }
+        squaresObjectTypes[index] = -1;
+        squaresObjects[index] = null;
     }
 
     [PunRPC]
@@ -474,6 +619,10 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
             {
                 squaresPlayer[i] = -1;
                 squaresMaterials[i].SetColor("_EmissionColor", Color.black);
+                var main = pointParticles[i].main;
+                pointParticles[i].startColor = playerColor[player];
+                pointParticles[i].Play();
+
             }
         }
     }
@@ -505,6 +654,7 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
         while (true)
         {
             float timeToSpawnPaintItem = UnityEngine.Random.Range(minTimeToSpawnPaintItem, maxTimeToSpawnPaintItem);
+            timeToSpawnPaintItem /= (quantityOfPlayers/2f);
             yield return new WaitForSeconds(timeToSpawnPaintItem);
             int rand = GetItemRandomSpawnPoint();
             Vector3 pos = GetItemPosition(rand);
@@ -519,6 +669,7 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
         while (true)
         {
             float timeToSpawnItem = UnityEngine.Random.Range(minTimeToSpawnItem, maxTimeToSpawnItem);
+            timeToSpawnItem /= (quantityOfPlayers / 2f);
             yield return new WaitForSeconds(timeToSpawnItem);
             int rand = GetItemRandomSpawnPoint();
             int type = UnityEngine.Random.Range(1, (int)ObjectTypes.MAX);
@@ -541,6 +692,14 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
 
         squaresObjectTypes[index] = type;
         yield return null;
+    }
+
+    IEnumerator StartSobekMovement()
+    {
+        yield return new WaitForSeconds(timeForSobekMovement);
+        sobekInitController.Run(sobekTargetPosition.position, () => {
+            SpawnSobekBot();
+        });
     }
     #endregion
 

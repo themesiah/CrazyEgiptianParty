@@ -1,10 +1,10 @@
 X Cambiar nombre a Cleoparty
 X Mejorar coordinación de la animación de la momia
-- Hacer que bastet pare su animación y corra hacia abajo
-- Hacer que bastet aparezca con su bola y comienza a tocar las narices (anular colores y objetos)
+X Hacer que bastet pare su animación y corra hacia abajo
+X Hacer que bastet aparezca con su bola y comienza a tocar las narices (anular colores y objetos)
+X Objeto swap
+X Adaptarlo a android
+X Poses de victoria tras fadeout-fadein
+- Objeto relámpago?
 - Hacer que se pueda empezar de nuevo
 - Detectar que se ha creado una sala
-X Objeto swap
-- Objeto relámpago?
-- Adaptarlo a android
-- Poses de victoria tras fadeout-fadein

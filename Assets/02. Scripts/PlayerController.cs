@@ -52,6 +52,12 @@ public class PlayerController : MonoBehaviourPunCallbacks, IPunObservable {
     }
     private Direction direction;
     private int currentSquare;
+#if UNITY_ANDROID
+    private Rect leftRect;
+    private Rect topRect;
+    private Rect rightRect;
+    private Rect bottomRect;
+#endif
 
     // Use this for initialization
     void Awake () {
@@ -59,12 +65,37 @@ public class PlayerController : MonoBehaviourPunCallbacks, IPunObservable {
         anim = GetComponentInChildren<Animator>();
         anim.speed = animSpeed;
         bbo = GetComponentInChildren<BillboardObject>();
+#if UNITY_ANDROID
+        leftRect = new Rect(0f, 0f, Screen.width / 4f, Screen.height);
+        rightRect = new Rect(Screen.width/4f*3f, 0f, Screen.width / 4f, Screen.height);
+        bottomRect = new Rect(Screen.width/4f, 0f, Screen.width / 2f, Screen.height/2f);
+        topRect = new Rect(Screen.width / 4f, Screen.height/2f, Screen.width / 2f, Screen.height/2f);
+#endif
     }
-	
-	// Update is called once per frame
-	void Update () {
+
+    // Update is called once per frame
+    void Update () {
         if (photonView.IsMine)
         {
+
+#if UNITY_ANDROID
+            if (Input.touchCount > 0)
+            {
+                if (leftRect.Contains(Input.touches[0].position))
+                {
+                    direction = Direction.Left;
+                } else if (rightRect.Contains(Input.touches[0].position))
+                {
+                    direction = Direction.Right;
+                } else if (topRect.Contains(Input.touches[0].position))
+                {
+                    direction = Direction.Top;
+                } else if (bottomRect.Contains(Input.touches[0].position))
+                {
+                    direction = Direction.Bottom;
+                }
+            }
+#else
             if (Input.GetKeyDown(KeyCode.UpArrow))
             {
                 direction = Direction.Top;
@@ -81,6 +112,7 @@ public class PlayerController : MonoBehaviourPunCallbacks, IPunObservable {
             {
                 direction = Direction.Right;
             }
+#endif
         }
 
         if (BoardController.BoardInstance != null && !board)

@@ -42,5 +42,8 @@ MonoBehaviour:
   - PlayerResetSquares
   - GotChancla
   - Swap
+  - StartAnim
+  - ProcessSobekInSquare
+  - ResetSquare
   DisableAutoOpenWizard: 1
   ShowSettings: 0
