@@ -265,6 +265,10 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
         });
         cf.SetScreenOverlayColor(new Color(0f, 0f, 0f, 1f));
         cf.StartFade(new Color(0f,0f,0f,0f), 3f);
+        if (results.Length > 0)
+        {
+            ZoomWinner(results[0]);
+        }
     }
 
     private void EndGame()
@@ -345,7 +349,7 @@ public class BoardController : MonoBehaviourPunCallbacks, IPunObservable
 
     private void ZoomWinner(int player)
     {
-        Vector3 position = players[player].transform.position;
+        Vector3 position = victoryChars[player].transform.position;
         Quaternion rotationStart = mainCamera.transform.rotation;
         mainCamera.transform.LookAt(position);
         Quaternion rotationTarget = mainCamera.transform.rotation;
