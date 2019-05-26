@@ -6,5 +6,7 @@ X Objeto swap
 X Adaptarlo a android
 X Poses de victoria tras fadeout-fadein
 - Objeto relámpago?
-- Hacer que se pueda empezar de nuevo
-- Detectar que se ha creado una sala
+X Hacer que se pueda empezar de nuevo
+X Detectar que se ha creado una sala
+X Normal map
+X Zoom en victoria en el centro de la sala
